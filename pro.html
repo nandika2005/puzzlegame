@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Search Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('gamebg.webp');
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        h1 {
+            margin-bottom: 20px;
+            margin-right: 300px;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-left: 20px;
+        }
+        .game-grid-container {
+            display: flex;
+        
+        }
+        .grid-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 40px);
+            gap: 5px;
+            margin-bottom: 20px;
+            margin-right: 70px;
+        }
+        .grid div {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #000;
+            background-color: #fff;
+            color: #000;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .grid .selected {
+            background-color: #0056b3; /* Darker blue background for selected words */
+            color: #fff; /* White text color */
+        }
+        .grid .found {
+            background-color: #28a745; /* Green background for found words */
+            color: #fff;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            margin-right: 300px;
+        }
+        .message {
+            margin: 20px;
+            font-size: 18px;
+            color: black;
+        }
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            margin-right: 300px;
+        }
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            margin-left: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>WORD SEARCH</h1>
+        <div class="timer" id="timer">Time Left: 60</div>
+        <div class="game-grid-container">
+            <div class="grid-container">
+                <div id="grid" class="grid"></div>
+            </div>
+            <div class="word-list" id="word-list">
+                <h2>WORDS TO FIND:</h2>
+                <ul id="words-ul"></ul>
+            </div>
+        </div>
+        <button onclick="resetGame()">Reset</button>
+        <div id="message" class="message"></div>
+    </div>
+    <script>
+        const gridSize = 10;
+        const words = ["JAVA", "SPRING", "GRID", "WORD","HEAD","COLD"];
+        let grid = [];
+        let foundWords = new Set();
+        let timerInterval;
+        let timeLeft = 60; // Set the timer to 60 seconds
+
+        function generateGrid() {
+            grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(''));
+
+            function placeWord(word) {
+                const direction = Math.random() > 0.5 ? 'H' : 'V';
+                let row, col;
+                if (direction === 'H') {
+                    row = Math.floor(Math.random() * gridSize);
+                    col = Math.floor(Math.random() * (gridSize - word.length));
+                    for (let i = 0; i < word.length; i++) {
+                        grid[row][col + i] = word[i];
+                    }
+                } else {
+                    row = Math.floor(Math.random() * (gridSize - word.length));
+                    col = Math.floor(Math.random() * gridSize);
+                    for (let i = 0; i < word.length; i++) {
+                        grid[row + i][col] = word[i];
+                    }
+                }
+            }
+
+            words.forEach(word => placeWord(word));
+
+            console.log("Grid after placing words:");
+            console.log(grid);
+
+            // Fill remaining empty cells with random letters
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    if (!grid[i][j]) {
+                        grid[i][j] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+                    }
+                }
+            }
+
+            console.log("Grid after filling random letters:");
+            console.log(grid);
+        }
+
+        function displayGrid() {
+            const gridContainer = document.getElementById('grid');
+            gridContainer.innerHTML = '';
+            grid.forEach((row, rowIndex) => {
+                row.forEach((cell, colIndex) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.textContent = cell;
+                    cellDiv.dataset.row = rowIndex;
+                    cellDiv.dataset.col = colIndex;
+                    cellDiv.addEventListener('click', () => handleCellClick(rowIndex, colIndex, cellDiv));
+                    gridContainer.appendChild(cellDiv);
+                });
+            });
+
+            const wordList = document.getElementById('words-ul');
+            wordList.innerHTML = '';
+            words.forEach(word => {
+                const wordLi = document.createElement('li');
+                wordLi.textContent = word;
+                wordList.appendChild(wordLi);
+            });
+        }
+
+        let selectedCells = [];
+
+        function handleCellClick(row, col, cellDiv) {
+            if (cellDiv.classList.contains('selected')) {
+                cellDiv.classList.remove('selected');
+                selectedCells = selectedCells.filter(c => !(c.row === row && c.col === col));
+            } else {
+                cellDiv.classList.add('selected');
+                selectedCells.push({ row, col });
+            }
+            updateMessage();
+        }
+
+        function updateMessage() {
+            const message = document.getElementById('message');
+            const selectedWord = selectedCells.map(cell => grid[cell.row][cell.col]).join('');
+
+            if (words.includes(selectedWord) && !foundWords.has(selectedWord)) {
+                message.textContent = `FOUND: ${selectedWord}!`;
+                foundWords.add(selectedWord);
+                selectedCells.forEach(cell => {
+                    const cellDiv = document.querySelector(`[data-row='${cell.row}'][data-col='${cell.col}']`);
+                    cellDiv.classList.remove('selected');
+                    cellDiv.classList.add('found');
+                });
+                selectedCells = [];
+            } else {
+                message.textContent = `Selected: ${selectedWord}`;
+            }
+        }
+
+        function startTimer() {
+            const timerElement = document.getElementById('timer');
+            timeLeft = 60; // Reset timer to 60 seconds
+            timerElement.textContent = `Time Left: ${timeLeft}`;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = `Time Left: ${timeLeft}`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Time is up! Game over.');
+                }
+            }, 1000);
+        }
+
+        function resetGame() {
+            generateGrid();
+            displayGrid();
+            document.getElementById('message').textContent = '';
+            selectedCells = [];
+            foundWords.clear();
+            startTimer();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            resetGame();
+        });
+    </script>
+</body>
+</html>
